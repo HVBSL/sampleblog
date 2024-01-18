@@ -9,8 +9,8 @@ const app = Express();
 
 // app.use(Express.json());
 // app.use(axios);
-// app.use(cors({ origin: true, credentials: true }));
-// app.use(bodyParser.json());
+app.use(cors({ origin: true, credentials: true }));
+app.use(bodyParser.json());
 
 process.on('uncaughtException', function (err) {
     console.error(err);
