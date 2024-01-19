@@ -5,7 +5,13 @@ import cors from "cors"
 import bodyParser from "body-parser";
 import fs from "fs";
 import admin from "firebase-admin";
+import path from "path";
+import { fileURLToPath } from "url";
+import "dotenv/config.js";
 
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const credentials = JSON.parse(
     fs.readFileSync('./credentials.json')
 )
@@ -20,6 +26,12 @@ const app = Express();
 // app.use(axios);
 app.use(cors({ origin: true, credentials: true }));
 app.use(bodyParser.json());
+app.use(Express.static(path.join(__dirname,'../build')));
+
+app.get(/^(?!\/api).+/,(req, res)=>{
+    res.sendFile(path.join(__dirname,'../build/index.html'));
+})
+
 app.use(async(req,res,next)=>{
     const {authToken }= req.headers;
 
@@ -33,7 +45,7 @@ app.use(async(req,res,next)=>{
     }
     req.user = req.user||{}
     next();
-})
+});
 
 process.on('uncaughtException', function (err) {
     console.error(err);
@@ -91,8 +103,8 @@ app.put('/api/articles/:name/upvotes', async (req, res, err) => {
                 $push: {upvoteIds: uid}})
                 .then(async () => {
                     const updatedArticle = await db.collection('articles').findOne({ name });
-                    console.log(`The ${name} has ${article.upvotes} upvotes and ${article.downvotes} downvotes`);
-                    res.status(201).json(updatedArticle);
+                    console.log(`The ${name} has ${article.upvotes} upvotes`);
+                    res.status(201).json(updatedArticle.data);
                 })
                 .catch(err => console.log(err));;
         }
@@ -109,7 +121,7 @@ app.put('/api/articles/:name/downvotes', async (req, res) => {
     await db.collection('articles').updateOne({ name }, { $inc: { downvotes: 1 } })
         .then(async () => {
             const article = await db.collection('articles').findOne({ name });
-            console.log(`The ${name} has ${article.upvotes} upvotes and ${article.downvotes} downvotes`);
+            console.log(`The ${name} has ${article.upvotes} upvotes`);
             res.status(201).json(article);
 
         })
@@ -118,15 +130,16 @@ app.put('/api/articles/:name/downvotes', async (req, res) => {
 
 app.post('/api/articles/:name/comments/', async (req, res) => {
     const { name } = req.params;
-    const { comment } = req.body;
-    const { email } =req.user;
+    const { postedBy,comment } = req.body;
+    // const { email } =req.user;
     
     await db.collection('articles').updateOne({ name }, {
-        $push: { comments: { postedBy: email, comment } },
+        $push: { comments: { postedBy, comment } },
     });
     const article = await db.collection('articles').findOne({ name });
-
+    
     if (article) {
+        console.log(req.body);
         res.json(article); 
     } else {
         res.send('That article doesn\'t exist!');
@@ -134,7 +147,8 @@ app.post('/api/articles/:name/comments/', async (req, res) => {
 });
 
 connectToDB((err) => {
-    app.listen(8000, (err) => {
+    const PORT = process.env.PORT||8000;
+    app.listen(PORT, (err) => {
         console.log("Server is running on the port 8000");
         if (err) {
             console.log(err);
