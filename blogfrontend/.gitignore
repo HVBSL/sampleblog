@@ -132,3 +132,4 @@ dist
 
 # Firebase Admin Credentails
 firebaseConfig.js
+.gitignore
